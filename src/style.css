@@ -3,3 +3,53 @@
 @media(max-width:1000px){.sidebar{width:215px}.topbar{padding:0 28px}.main-area main{padding:35px 28px 100px}.hero-illustration{width:30%}.stat-card{padding:15px;gap:10px}.stat-icon{width:42px;height:42px}}
 @media(max-width:760px){.sidebar{position:fixed;left:-280px;transition:left .2s;width:265px}.sidebar.open{left:0}.menu-backdrop{display:block;position:fixed;inset:0;background:#0a241a80;z-index:25}.mobile-only{display:inline-flex}.sidebar-head .mobile-only{margin-left:auto}.topbar{height:63px;padding:0 20px;justify-content:flex-start;gap:15px}.topbar-date{margin-left:auto}.main-area main{padding:28px 20px 105px}.bottom-nav{position:fixed;z-index:20;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid #e4ebe4;padding:9px 8px calc(9px + env(safe-area-inset-bottom))}.bottom-nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:#829688;font-size:10px;font-weight:800}.bottom-nav a.active{color:#24553d}.login-page{display:block}.login-art{display:none}.login-panel{min-height:100vh;flex-direction:column}.login-mobile-brand{display:flex;align-items:center;gap:12px;font:800 14px Manrope,sans-serif;letter-spacing:2px;position:absolute;top:35px;left:28px}.login-footer{bottom:25px}.detail-layout{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:560px){.page-header{align-items:flex-start;flex-direction:column;gap:19px}.page-header h1,.detail-head h1{font-size:29px}.page-header>.button{align-self:stretch}.hero-card{min-height:220px}.hero-content{padding:28px}.hero-content h2{font-size:26px}.hero-content p{max-width:200px;font-size:12px}.hero-illustration{min-width:0;width:35%}.hero-calendar{right:-55px;top:72px;transform:rotate(14deg) scale(.7)}.hero-check{right:-1px;top:162px;transform:scale(.7)}.stats-grid{grid-template-columns:1fr;gap:10px;margin-bottom:31px}.stat-card{padding:14px 17px}.stat-card strong{font-size:22px}.toolbar{gap:10px}.count{white-space:nowrap}.client-grid{grid-template-columns:1fr}.detail-head{flex-wrap:wrap}.detail-head .button{margin-left:86px}.panel{padding:18px}.panel-head{align-items:flex-start;flex-direction:column}.upload-button{width:100%}.appointment-row{padding:13px;gap:10px}.appointment-info span{font-size:11px}.row-actions{gap:0}.row-actions .text-button{padding:7px}.form-row{grid-template-columns:1fr}.modal{padding:20px}.topbar-label{display:none}.topbar-date{font-size:12px}.section-heading h2{font-size:18px}}
+/* Keep the browser viewport still; long lists scroll inside the app surface. */
+html,body,#root{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
+.app-shell{height:100dvh;min-height:0;overflow:hidden}
+.sidebar{height:100dvh}
+.main-area{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.topbar{flex:none}
+.main-area main{width:100%;max-width:1370px;min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#c9d9cb transparent}
+.login-page{height:100dvh;min-height:0;overflow:hidden}
+.login-art{height:100dvh;min-height:0}
+.login-panel{height:100dvh;min-height:0;overflow:hidden}
+@media(max-height:700px) and (min-width:761px){
+  .login-art{padding-top:28px;padding-bottom:28px}
+  .art-copy h1{font-size:clamp(40px,4.3vw,62px);margin:16px 0}
+  .art-copy p{font-size:13px;line-height:1.5}
+  .login-form{gap:12px}
+  .login-form>p{margin-bottom:7px}
+  .login-form input{height:43px}
+  .wide{height:44px;margin-top:3px}
+  .login-footer{bottom:18px}
+}
+@media(max-width:760px){
+  .main-area main{padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+  .login-panel{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding-top:82px;padding-bottom:55px}
+  .login-panel::-webkit-scrollbar{display:none}
+  .login-form input{font-size:16px}
+}
+@media(max-height:600px) and (max-width:760px){
+  .login-panel{justify-content:flex-start}
+  .login-mobile-brand{top:17px}
+  .login-form{gap:10px}
+  .login-form>p{margin-bottom:2px}
+  .login-footer{position:static;margin-top:24px}
+}
+@media(hover:none) and (pointer:coarse){
+  html,body,#root{touch-action:pan-y;-webkit-text-size-adjust:100%}
+  button,a,input,select,textarea{touch-action:manipulation}
+}
+.client-picker{position:relative;min-width:0}
+.client-picker>label{display:block;margin-bottom:7px;font-size:12px;font-weight:800;color:#385142}
+.client-picker-input{display:flex;align-items:center;gap:9px;border:1px solid #dce7dc;border-radius:9px;background:#fff;padding:0 12px;color:#829787}
+.client-picker-input:focus-within{border-color:#488260;box-shadow:0 0 0 3px #dcefe0}
+.client-picker-input input{width:100%;height:45px;padding:0;border:0;outline:0;box-shadow:none!important;background:transparent;color:#203c2c}
+.client-picker-options{position:absolute;z-index:10;top:calc(100% + 5px);left:0;right:0;max-height:225px;overflow-y:auto;background:#fff;border:1px solid #dce7dc;border-radius:10px;box-shadow:0 12px 30px #17382e24;overscroll-behavior:contain}
+.client-picker-option{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;background:#fff;border:0;text-align:left;color:#203c2c}
+.client-picker-option:hover,.client-picker-option.highlighted{background:#eff5ed}
+.client-picker-option>span:last-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.client-picker-option strong{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.client-picker-option small{font-size:11px;color:#829586}
+.picker-avatar{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:9px;background:#e4efe0;color:#3d744e;font-size:11px;font-weight:800}
+.client-picker-empty{padding:15px;color:#849588;font-size:12px}

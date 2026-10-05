@@ -30,7 +30,7 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
     event.preventDefault(); setBusy(true); setError('')
     try { await login(username, password); await onLogin() } catch (err) { setError((err as Error).message) } finally { setBusy(false) }
   }
-  return <div className="login-page"><div className="login-art"><div className="login-art-top"><span className="brand-mark">K<span>.</span></span><span>KONSULTIME</span></div><div className="art-copy"><div className="art-kicker">PUNA JUA, MË QARTË</div><h1>Gjithçka<br/>në vendin<br/><em>e duhur.</em></h1><p>Klientët, dokumentet dhe terminet tuaja, të organizuara për çdo ditë.</p></div><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="art-foot">Një hapësirë e qetë për punën tuaj.</div></div><div className="login-panel"><div className="login-mobile-brand"><span className="brand-mark">K<span>.</span></span> KONSULTIME</div><form onSubmit={submit} className="login-form"><span className="eyebrow">MIRË SE U KTHYET</span><h2>Hyni në llogari</h2><p>Vazhdoni aty ku e latë punën.</p><label>Emri i përdoruesit<input autoComplete="username" required value={username} onChange={e => setUsername(e.target.value)} placeholder="Shkruani emrin" /></label><label>Fjalëkalimi<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Shkruani fjalëkalimin" /></label>{error && <div className="error" role="alert">{error}</div>}<button className="button primary wide" disabled={busy}>{busy ? 'Duke hyrë…' : 'Hyr në Konsultime'} <ArrowRight size={18}/></button></form><div className="login-footer">© {new Date().getFullYear()} Konsultime</div></div></div>
+  return <div className="login-page"><div className="login-art"><div className="login-art-top"><span className="brand-mark">K<span>.</span></span><span>KONSULTIME</span></div><div className="art-copy"><div className="art-kicker">PUNA JUA, MË QARTË</div><h1>Gjithçka<br/>në vendin<br/><em>e duhur.</em></h1><p>Klientët, dokumentet dhe terminet tuaja, të organizuara për çdo ditë.</p></div><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="art-foot">Një hapësirë e qetë për punën tuaj.</div></div><div className="login-panel"><div className="login-mobile-brand"><span className="brand-mark">K<span>.</span></span> KONSULTIME</div><form onSubmit={submit} className="login-form"><span className="eyebrow">MIRË SE U KTHYET</span><h2>Hyni në llogari</h2><p>Vazhdoni aty ku e latë punën.</p><label>Emri i përdoruesit<input autoComplete="username" autoCapitalize="none" spellCheck={false} required value={username} onChange={e => setUsername(e.target.value.toLowerCase())} placeholder="Shkruani emrin" /></label><label>Fjalëkalimi<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Shkruani fjalëkalimin" /></label>{error && <div className="error" role="alert">{error}</div>}<button className="button primary wide" disabled={busy}>{busy ? 'Duke hyrë…' : 'Hyr në Konsultime'} <ArrowRight size={18}/></button></form><div className="login-footer">© {new Date().getFullYear()} Konsultime</div></div></div>
 }
 
 function Shell({ user, onLogout }: { user: User; onLogout: () => Promise<void> }) {
@@ -119,6 +119,70 @@ function Appointments() {
   return <><PageHeader eyebrow="KALENDARI" title="Terminet" description="Takimet e ardhshme, të renditura qartë sipas datës dhe orës." action={<button className="button primary" onClick={() => setModal('new')}><Plus size={18}/> Termin i ri</button>} />{error && <div className="error">{error}</div>}{actionError && <div className="error">{actionError}</div>}<div className="section-heading appointments-heading"><div><span className="eyebrow">NË VIJIM</span><h2>Terminet e ardhshme <span className="pill">{upcoming.length}</span></h2></div></div>{appointments && !upcoming.length ? <Empty icon={<CalendarDays size={28}/>} title="Nuk ka termine në vazhdim" text="Shtoni takimin e radhës për ta parë këtu." /> : <div className="appointment-list">{upcoming.map(item => <AppointmentRow key={item.id} appointment={item} actions={actions(item)}/>)}</div>}{past.length > 0 && <><div className="section-heading past-heading"><div><span className="eyebrow">HISTORIKU</span><h2>Terminet e kaluara</h2></div></div><div className="appointment-list past-list">{past.map(item => <AppointmentRow key={item.id} appointment={item} actions={actions(item)}/>)}</div></>}{modal && <AppointmentModal appointment={modal === 'new' ? undefined : modal} clients={clients || []} onClose={() => setModal(null)} onSaved={async () => { setModal(null); await load() }}/>}</>
 }
 
+function ClientPicker({ clients, value, onChange }: { clients: Client[]; value: string; onChange: (id: string) => void }) {
+  const selected = clients.find(client => String(client.id) === value)
+  const [query, setQuery] = useState(selected ? fullName(selected) : '')
+  const [open, setOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const matches = clients.filter(client =>
+    `${fullName(client)} ${client.phone}`.toLocaleLowerCase('sq').includes(query.trim().toLocaleLowerCase('sq'))
+  )
+
+  useEffect(() => {
+    if (selected && !open) setQuery(fullName(selected))
+  }, [selected, open])
+
+  function choose(client: Client) {
+    onChange(String(client.id))
+    setQuery(fullName(client))
+    setOpen(false)
+  }
+
+  return <div className="client-picker" onBlur={event => {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+      setOpen(false)
+      if (selected) setQuery(fullName(selected))
+    }
+  }}>
+    <label htmlFor="appointment-client">Klienti</label>
+    <div className="client-picker-input">
+      <Search size={18} aria-hidden="true" />
+      <input
+        id="appointment-client"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        aria-controls="appointment-client-options"
+        aria-activedescendant={open && matches[activeIndex] ? `appointment-client-${matches[activeIndex].id}` : undefined}
+        autoComplete="off"
+        placeholder="Kërko klientin..."
+        value={query}
+        onFocus={event => { setOpen(true); event.currentTarget.select() }}
+        onChange={event => { setQuery(event.target.value); onChange(''); setActiveIndex(0); setOpen(true) }}
+        onKeyDown={event => {
+          if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setActiveIndex(index => Math.min(index + 1, matches.length - 1)) }
+          if (event.key === 'ArrowUp') { event.preventDefault(); setActiveIndex(index => Math.max(index - 1, 0)) }
+          if (event.key === 'Enter' && open && matches[activeIndex]) { event.preventDefault(); choose(matches[activeIndex]) }
+          if (event.key === 'Escape' && open) { event.stopPropagation(); setOpen(false) }
+        }}
+      />
+    </div>
+    {open && <div id="appointment-client-options" className="client-picker-options" role="listbox">
+      {matches.length ? matches.map((client, index) => <button
+        type="button"
+        role="option"
+        aria-selected={String(client.id) === value}
+        id={`appointment-client-${client.id}`}
+        className={`client-picker-option ${index === activeIndex ? 'highlighted' : ''}`}
+        key={client.id}
+        onMouseDown={event => event.preventDefault()}
+        onClick={() => choose(client)}
+      ><span className="picker-avatar">{initials(client)}</span><span><strong>{fullName(client)}</strong><small>{client.phone}</small></span></button>)
+        : <div className="client-picker-empty">Nuk u gjet asnjë klient.</div>}
+    </div>}
+  </div>
+}
+
 function AppointmentModal({ appointment, clients, onClose, onSaved }: { appointment?: Appointment; clients: Client[]; onClose: () => void; onSaved: () => Promise<void> }) {
   const original = appointment ? new Date(appointment.starts_at) : null
   const [clientId, setClientId] = useState(String(appointment?.client_id || ''))
@@ -127,8 +191,8 @@ function AppointmentModal({ appointment, clients, onClose, onSaved }: { appointm
   const [notes, setNotes] = useState(appointment?.notes || '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  async function submit(event: FormEvent) { event.preventDefault(); setBusy(true); setError(''); try { const starts = new Date(`${date}T${time}`); if (Number.isNaN(starts.getTime())) throw new Error('Zgjidhni datën dhe orën.'); await api(`/appointments${appointment ? `/${appointment.id}` : ''}`, { method: appointment ? 'PATCH' : 'POST', body: JSON.stringify({ client_id: Number(clientId), starts_at: starts.toISOString(), notes: notes || null }) }); await onSaved() } catch (err) { setError((err as Error).message) } finally { setBusy(false) } }
-  return <Modal title={appointment ? 'Ndrysho terminin' : 'Termin i ri'} onClose={onClose}><form className="form" onSubmit={submit}><label>Klienti<select required value={clientId} onChange={e => setClientId(e.target.value)}><option value="">Zgjidhni klientin</option>{clients.map(client => <option key={client.id} value={client.id}>{fullName(client)}</option>)}</select></label>{!clients.length && <p className="form-hint">Së pari shtoni një klient te faqja Klientët.</p>}<div className="form-row"><label>Data<input type="date" required value={date} onChange={e => setDate(e.target.value)}/></label><label>Ora<input type="time" required value={time} onChange={e => setTime(e.target.value)}/></label></div><label>Shënime <span className="optional">(opsionale)</span><textarea maxLength={1000} rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Shtoni një shënim të shkurtër…"/></label>{error && <div className="error">{error}</div>}<div className="form-actions"><button type="button" className="button ghost" onClick={onClose}>Anulo</button><button disabled={busy || !clients.length} className="button primary">{busy ? 'Duke ruajtur…' : 'Ruaj terminin'}</button></div></form></Modal>
+  async function submit(event: FormEvent) { event.preventDefault(); setBusy(true); setError(''); try { if (!clientId) throw new Error('Zgjidhni një klient nga lista.'); const starts = new Date(`${date}T${time}`); if (Number.isNaN(starts.getTime())) throw new Error('Zgjidhni datën dhe orën.'); await api(`/appointments${appointment ? `/${appointment.id}` : ''}`, { method: appointment ? 'PATCH' : 'POST', body: JSON.stringify({ client_id: Number(clientId), starts_at: starts.toISOString(), notes: notes || null }) }); await onSaved() } catch (err) { setError((err as Error).message) } finally { setBusy(false) } }
+  return <Modal title={appointment ? 'Ndrysho terminin' : 'Termin i ri'} onClose={onClose}><form className="form" onSubmit={submit}><ClientPicker clients={clients} value={clientId} onChange={setClientId} />{!clients.length && <p className="form-hint">Së pari shtoni një klient te faqja Klientët.</p>}<div className="form-row"><label>Data<input type="date" required value={date} onChange={e => setDate(e.target.value)}/></label><label>Ora<input type="time" required value={time} onChange={e => setTime(e.target.value)}/></label></div><label>Shënime <span className="optional">(opsionale)</span><textarea maxLength={1000} rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Shtoni një shënim të shkurtër…"/></label>{error && <div className="error">{error}</div>}<div className="form-actions"><button type="button" className="button ghost" onClick={onClose}>Anulo</button><button disabled={busy || !clients.length} className="button primary">{busy ? 'Duke ruajtur…' : 'Ruaj terminin'}</button></div></form></Modal>
 }
 
 export default function App() { return <BrowserRouter><AppRoutes/></BrowserRouter> }
