@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { BrowserRouter, NavLink, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, CalendarDays, Clock3, Download, FileText, LayoutDashboard, LogOut, Menu, Plus, Search, Trash2, Upload, Users, X } from 'lucide-react'
-import { api, downloadDocument, login, logout, restoreSession, type Appointment, type Client, type User } from './api'
+import { ArrowLeft, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Clock3, Download, Eye, FileText, Image as ImageIcon, LayoutDashboard, LogOut, Menu, Plus, Search, Trash2, Upload, Users, X } from 'lucide-react'
+import { api, downloadDocument, fetchDocumentBlob, login, logout, restoreSession, type Appointment, type Client, type Document, type User } from './api'
 
 const fullName = (client: Client) => `${client.first_name} ${client.last_name}`
 const dateText = (value: string) => new Intl.DateTimeFormat('sq-AL', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value))
@@ -92,6 +92,53 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}><div className="modal" role="dialog" aria-modal="true" aria-label={title}><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="Mbyll"><X size={21}/></button></div>{children}</div></div>
 }
 
+function DocumentPreview({ clientId, initialDocument, documents, onClose }: {
+  clientId: number; initialDocument: Document; documents: Document[]; onClose: () => void
+}) {
+  const [current, setCurrent] = useState(initialDocument)
+  const [url, setUrl] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const images = documents.filter(doc => doc.content_type.startsWith('image/'))
+  const imageIndex = images.findIndex(doc => doc.id === current.id)
+  const isImage = imageIndex !== -1
+
+  useEffect(() => {
+    let cancelled = false
+    let objectUrl: string | null = null
+    setUrl(null)
+    setError('')
+    fetchDocumentBlob(clientId, current).then(blob => {
+      if (cancelled) return
+      objectUrl = URL.createObjectURL(blob)
+      setUrl(objectUrl)
+    }).catch(err => { if (!cancelled) setError((err as Error).message) })
+    return () => { cancelled = true; if (objectUrl) URL.revokeObjectURL(objectUrl) }
+  }, [clientId, current])
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+      if (isImage && event.key === 'ArrowLeft' && imageIndex > 0) setCurrent(images[imageIndex - 1])
+      if (isImage && event.key === 'ArrowRight' && imageIndex < images.length - 1) setCurrent(images[imageIndex + 1])
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose, isImage, imageIndex, images])
+
+  return <div className="preview-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
+    <div className="preview-dialog" role="dialog" aria-modal="true" aria-label={`Shiko ${current.original_name}`}>
+      <div className="preview-bar">
+        <div className="preview-title"><span className="preview-file-icon">{isImage ? <ImageIcon size={19}/> : <FileText size={19}/>}</span><div><strong>{current.original_name}</strong><small>{isImage ? `Foto ${imageIndex + 1} nga ${images.length}` : 'Dokument PDF'}</small></div></div>
+        <div className="preview-tools"><button className="preview-download" onClick={() => downloadDocument(clientId, current).catch(err => setError((err as Error).message))}><Download size={18}/><span>Shkarko</span></button><button className="preview-close" onClick={onClose} aria-label="Mbyll pamjen"><X size={22}/></button></div>
+      </div>
+      <div className={`preview-content ${isImage ? 'image-content' : 'pdf-content'}`}>
+        {error ? <div className="preview-message" role="alert">{error}</div> : !url ? <div className="preview-message">Duke hapur dokumentin…</div> : isImage ? <img src={url} alt={current.original_name}/> : <iframe src={url} title={current.original_name}/>}
+        {isImage && images.length > 1 && <><button className="preview-arrow previous" disabled={imageIndex === 0} onClick={() => setCurrent(images[imageIndex - 1])} aria-label="Fotoja e mëparshme"><ChevronLeft size={26}/></button><button className="preview-arrow next" disabled={imageIndex === images.length - 1} onClick={() => setCurrent(images[imageIndex + 1])} aria-label="Fotoja tjetër"><ChevronRight size={26}/></button></>}
+      </div>
+    </div>
+  </div>
+}
+
 function ClientDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -99,12 +146,13 @@ function ClientDetail() {
   const [edit, setEdit] = useState(false)
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [previewDocument, setPreviewDocument] = useState<Document | null>(null)
   async function remove() { if (!client || !window.confirm(`Të fshihet ${fullName(client)} dhe të gjitha dokumentet/terminet?`)) return; try { await api(`/clients/${id}`, { method: 'DELETE' }); navigate('/clients') } catch (err) { setActionError((err as Error).message) } }
   async function upload(file: File | undefined) { if (!file) return; setBusy(true); setActionError(''); const body = new FormData(); body.append('file', file); try { await api(`/clients/${id}/documents`, { method: 'POST', body }); await load() } catch (err) { setActionError((err as Error).message) } finally { setBusy(false) } }
   async function removeDoc(docId: number) { if (!window.confirm('Të fshihet dokumenti?')) return; try { await api(`/clients/${id}/documents/${docId}`, { method: 'DELETE' }); await load() } catch (err) { setActionError((err as Error).message) } }
   if (error) return <div className="error">{error}</div>
   if (!client) return <div className="loading">Duke ngarkuar klientin…</div>
-  return <><NavLink to="/clients" className="back-link"><ArrowLeft size={18}/> Kthehu te klientët</NavLink><div className="detail-head"><div className="detail-avatar">{initials(client)}</div><div><span className="eyebrow">PROFILI I KLIENTIT</span><h1>{fullName(client)}</h1><p>{client.phone}</p></div><button className="button ghost" onClick={() => setEdit(true)}>Ndrysho</button></div><div className="detail-layout"><section className="panel"><div className="panel-head"><div><span className="eyebrow">ARKIVA</span><h2>Dokumentet</h2></div><label className="button primary upload-button"><Upload size={17}/> {busy ? 'Duke ngarkuar…' : 'Ngarko dokument'}<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.docx" disabled={busy} onChange={e => { upload(e.target.files?.[0]); e.target.value = '' }}/></label></div>{actionError && <div className="error">{actionError}</div>}{client.documents.length ? <div className="doc-list">{client.documents.map(doc => <div className="doc-row" key={doc.id}><div className="doc-icon"><FileText size={21}/></div><div><strong>{doc.original_name}</strong><span>{Math.max(1, Math.round(doc.size_bytes / 1024))} KB · {dateText(doc.created_at)}</span></div><button className="icon-button" title="Shkarko" aria-label="Shkarko" onClick={() => downloadDocument(client.id, doc).catch(err => setActionError(err.message))}><Download size={18}/></button><button className="icon-button danger" title="Fshi" aria-label="Fshi" onClick={() => removeDoc(doc.id)}><Trash2 size={18}/></button></div>)}</div> : <div className="mini-empty">Ende nuk ka dokumente për këtë klient.</div>}</section><aside className="panel info-panel"><span className="eyebrow">DETAJET</span><h2>Informacioni</h2><div className="info-line"><span>Emri i plotë</span><strong>{fullName(client)}</strong></div><div className="info-line"><span>Numri i kontaktit</span><a href={`tel:${client.phone}`}>{client.phone}</a></div><div className="info-line"><span>Regjistruar më</span><strong>{dateText(client.created_at)}</strong></div><button className="delete-link" onClick={remove}><Trash2 size={16}/> Fshi klientin</button></aside></div>{edit && <ClientModal client={client} onClose={() => setEdit(false)} onSaved={async () => { setEdit(false); await load() }}/>}</>
+  return <><NavLink to="/clients" className="back-link"><ArrowLeft size={18}/> Kthehu te klientët</NavLink><div className="detail-head"><div className="detail-avatar">{initials(client)}</div><div><span className="eyebrow">PROFILI I KLIENTIT</span><h1>{fullName(client)}</h1><p>{client.phone}</p></div><button className="button ghost" onClick={() => setEdit(true)}>Ndrysho</button></div><div className="detail-layout"><section className="panel"><div className="panel-head"><div><span className="eyebrow">ARKIVA</span><h2>Dokumentet</h2></div><label className="button primary upload-button"><Upload size={17}/> {busy ? 'Duke ngarkuar…' : 'Ngarko dokument'}<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.docx" disabled={busy} onChange={e => { upload(e.target.files?.[0]); e.target.value = '' }}/></label></div>{actionError && <div className="error">{actionError}</div>}{client.documents.length ? <div className="doc-list">{client.documents.map(doc => <div className="doc-row" key={doc.id}><div className="doc-icon">{doc.content_type.startsWith("image/") ? <ImageIcon size={21}/> : <FileText size={21}/>}</div><div><strong>{doc.original_name}</strong><span>{Math.max(1, Math.round(doc.size_bytes / 1024))} KB · {dateText(doc.created_at)}</span></div>{(doc.content_type.startsWith("image/") || doc.content_type === "application/pdf") && <button className="doc-view" title="Shiko" aria-label={`Shiko ${doc.original_name}`} onClick={() => setPreviewDocument(doc)}><Eye size={17}/><span>Shiko</span></button>}<button className="icon-button" title="Shkarko" aria-label="Shkarko" onClick={() => downloadDocument(client.id, doc).catch(err => setActionError(err.message))}><Download size={18}/></button><button className="icon-button danger" title="Fshi" aria-label="Fshi" onClick={() => removeDoc(doc.id)}><Trash2 size={18}/></button></div>)}</div> : <div className="mini-empty">Ende nuk ka dokumente për këtë klient.</div>}</section><aside className="panel info-panel"><span className="eyebrow">DETAJET</span><h2>Informacioni</h2><div className="info-line"><span>Emri i plotë</span><strong>{fullName(client)}</strong></div><div className="info-line"><span>Numri i kontaktit</span><a href={`tel:${client.phone}`}>{client.phone}</a></div><div className="info-line"><span>Regjistruar më</span><strong>{dateText(client.created_at)}</strong></div><button className="delete-link" onClick={remove}><Trash2 size={16}/> Fshi klientin</button></aside></div>{edit && <ClientModal client={client} onClose={() => setEdit(false)} onSaved={async () => { setEdit(false); await load() }}/>} {previewDocument && <DocumentPreview clientId={client.id} initialDocument={previewDocument} documents={client.documents} onClose={() => setPreviewDocument(null)}/>}</>
 }
 
 function Appointments() {

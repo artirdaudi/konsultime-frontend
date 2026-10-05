@@ -49,7 +49,7 @@ export async function api<T>(path: string, options: RequestInit = {}, retry = tr
   return response.json()
 }
 
-export async function downloadDocument(clientId: number, document: Document) {
+export async function fetchDocumentBlob(clientId: number, document: Document): Promise<Blob> {
   const headers = new Headers()
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
   let response = await fetch(`${API_URL}/clients/${clientId}/documents/${document.id}`, { headers, credentials: 'include' })
@@ -58,7 +58,11 @@ export async function downloadDocument(clientId: number, document: Document) {
     response = await fetch(`${API_URL}/clients/${clientId}/documents/${document.id}`, { headers, credentials: 'include' })
   }
   if (!response.ok) throw new Error(await errorMessage(response))
-  const url = URL.createObjectURL(await response.blob())
+  return new Blob([await response.blob()], { type: document.content_type })
+}
+
+export async function downloadDocument(clientId: number, document: Document) {
+  const url = URL.createObjectURL(await fetchDocumentBlob(clientId, document))
   const link = window.document.createElement('a')
   link.href = url; link.download = document.original_name; link.click()
   window.setTimeout(() => URL.revokeObjectURL(url), 60000)
